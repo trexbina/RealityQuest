@@ -49,7 +49,8 @@ export function PreRegistrationForm() {
       if (contentType && contentType.includes('application/json')) {
         await res.json();
         setSuccess(true);
-        // We will reload the window to refresh auth state everywhere
+        // Navigate to Tavern and force a reload to update global auth state on page
+        window.location.href = '/#tavern';
         window.location.reload();
       }
     } catch (err: any) {

@@ -297,34 +297,34 @@ export function CommunityHub() {
             return (
               <DataCard
                 key={thread.id}
-                title={isEditing ? 'EDITING OVRRIDE' : thread.title}
+                title={isEditing ? 'EDITING OVERRIDE' : thread.title}
                 subtitle="PUBLIC COMMS"
                 fields={[
                   { label: "AUTHOR", value: thread.authorName, highlight: true },
                   { label: "TIME", value: formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true }) },
                 ]}
-                className="group hover:border-primary/80 transition-colors relative"
+                action={
+                  currentUser && (currentUser.id === thread.authorId || currentUser.role === 'ADMIN') && !isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => startEdit(thread)}
+                        className="text-muted-foreground hover:text-primary transition-colors p-1"
+                        title="Edit Missive"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(thread.id)}
+                        className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                        title="Delete Missive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : undefined
+                }
+                className="group hover:border-primary/80 transition-colors"
               >
-                {/* Admin/Owner Top Right Edit/Delete actions nested inside header visual area */}
-                {currentUser && (currentUser.id === thread.authorId || currentUser.role === 'ADMIN') && !isEditing && (
-                  <div className="absolute top-4 right-4 flex items-center gap-2">
-                    <button 
-                      onClick={() => startEdit(thread)}
-                      className="text-muted-foreground hover:text-primary transition-colors p-1"
-                      title="Edit Missive"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(thread.id)}
-                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                      title="Delete Missive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-
                 <div className="px-4 pb-4">
                   {isEditing ? (
                     <div className="bg-black/40 border border-primary/50 rounded p-4 space-y-4">

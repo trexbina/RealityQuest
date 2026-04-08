@@ -31,8 +31,9 @@ function DataField({ label, value, highlight = false }: DataFieldProps) {
 }
 
 interface DataCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  title?: string
-  subtitle?: string
+  title?: React.ReactNode
+  subtitle?: React.ReactNode
+  action?: React.ReactNode
   fields: { label: string; value: string; highlight?: boolean }[]
   status?: "active" | "inactive" | "alert"
 }
@@ -40,6 +41,7 @@ interface DataCardProps extends React.HTMLAttributes<HTMLDivElement> {
 export function DataCard({
   title,
   subtitle,
+  action,
   fields,
   status = "active",
   className,
@@ -62,19 +64,26 @@ export function DataCard({
     >
       <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.03)_2px,rgba(0,0,0,0.03)_4px)]" />
 
-      {(title || subtitle) && (
-        <div className="border-b border-border/50 px-4 py-2">
-          {subtitle && (
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              {subtitle}
-            </div>
-          )}
-          {title && (
-            <div className="flex items-center gap-2">
-              <span className="text-primary">|</span>
-              <h3 className="text-lg font-bold uppercase tracking-wider">
-                {title}
-              </h3>
+      {(title || subtitle || action) && (
+        <div className="border-b border-border/50 px-4 py-2 flex items-center justify-between">
+          <div>
+            {subtitle && (
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                {subtitle}
+              </div>
+            )}
+            {title && (
+              <div className="flex items-center gap-2">
+                <span className="text-primary">|</span>
+                <h3 className="text-lg font-bold uppercase tracking-wider">
+                  {title}
+                </h3>
+              </div>
+            )}
+          </div>
+          {action && (
+            <div className="flex items-center">
+              {action}
             </div>
           )}
         </div>

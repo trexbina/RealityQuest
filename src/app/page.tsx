@@ -5,8 +5,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CRTEffect } from '@/components/thegridcn/crt-effect';
 import { DataCard } from '@/components/thegridcn/data-card';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
+import { getSession } from '@/lib/auth';
 
-export default function Home() {
+export default async function Home() {
+  const session = await getSession();
+
   return (
     <CRTEffect intensity="light" className="min-h-screen bg-background relative overflow-hidden flex flex-col">
       {/* Background Decor */}
@@ -130,41 +133,43 @@ export default function Home() {
           </div>
         </section>
 
-        {/* REGISTRATION SECTION */}
-        <section id="register" className="py-32 px-4 relative">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl h-[400px] bg-primary/5 blur-[150px] rounded-full pointer-events-none" />
-          <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-4xl font-display font-bold text-white mb-6">Forge Your Legend</h2>
-              <p className="text-muted-foreground font-mono text-lg mb-8">
-                The servers are booting up. Secure your unique username now and receive the <span className="text-primary font-bold">"Pioneer's Amulet"</span> cosmetic item at launch.
-              </p>
-              <ul className="space-y-4 font-mono text-sm text-gray-300">
-                <li className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded border border-primary/50 flex items-center justify-center bg-primary/10">
-                    <CheckIcon />
-                  </div>
-                  Early access to the closed beta
-                </li>
-                <li className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded border border-primary/50 flex items-center justify-center bg-primary/10">
-                    <CheckIcon />
-                  </div>
-                  Exclusive Discord role
-                </li>
-                <li className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded border border-primary/50 flex items-center justify-center bg-primary/10">
-                    <CheckIcon />
-                  </div>
-                  Weekly developer updates
-                </li>
-              </ul>
+        {/* REGISTRATION SECTION - ONLY VISIBLE IF NOT AUTHENTICATED */}
+        {!session && (
+          <section id="register" className="py-32 px-4 relative">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl h-[400px] bg-primary/5 blur-[150px] rounded-full pointer-events-none" />
+            <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div>
+                <h2 className="text-4xl font-display font-bold text-white mb-6">Forge Your Legend</h2>
+                <p className="text-muted-foreground font-mono text-lg mb-8">
+                  The servers are booting up. Secure your unique username now and receive the <span className="text-primary font-bold">"Pioneer's Amulet"</span> cosmetic item at launch.
+                </p>
+                <ul className="space-y-4 font-mono text-sm text-gray-300">
+                  <li className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded border border-primary/50 flex items-center justify-center bg-primary/10">
+                      <CheckIcon />
+                    </div>
+                    Early access to the closed beta
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded border border-primary/50 flex items-center justify-center bg-primary/10">
+                      <CheckIcon />
+                    </div>
+                    Exclusive Discord role
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded border border-primary/50 flex items-center justify-center bg-primary/10">
+                      <CheckIcon />
+                    </div>
+                    Weekly developer updates
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <PreRegistrationForm />
+              </div>
             </div>
-            <div>
-              <PreRegistrationForm />
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* COMMUNITY HUB SECTION */}
         <section id="tavern" className="py-24 bg-black/60 border-t border-border/30 relative">
