@@ -45,8 +45,9 @@ export function DataCard({
   fields,
   status = "active",
   className,
+  children,
   ...props
-}: DataCardProps) {
+}: DataCardProps & { children?: React.ReactNode }) {
   const statusColors = {
     active: "border-primary/50",
     inactive: "border-muted",
@@ -99,6 +100,9 @@ export function DataCard({
           />
         ))}
       </div>
+
+      {/* Render children (thread content, attachments, voting) */}
+      {children}
 
       <div className="pointer-events-none absolute left-0 top-0 h-4 w-4 border-l-2 border-t-2 border-primary/50" />
       <div className="pointer-events-none absolute right-0 top-0 h-4 w-4 border-r-2 border-t-2 border-primary/50" />
