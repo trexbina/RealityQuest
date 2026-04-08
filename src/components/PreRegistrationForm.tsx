@@ -66,6 +66,23 @@ export function PreRegistrationForm() {
   return (
     <Card className="w-full max-w-md mx-auto border-border/50 bg-black/60 backdrop-blur-xl relative overflow-hidden group hover:border-primary/50 transition-colors duration-500">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      
+      {/* TOP TOGGLE */}
+      <div className="flex border-b border-border/50 relative z-10 w-full font-mono text-sm uppercase tracking-widest">
+        <button 
+          onClick={() => { setIsLogin(false); setError(''); }}
+          className={`flex-1 py-4 text-center transition-colors ${!isLogin ? 'bg-primary/20 text-primary border-b-2 border-primary font-bold' : 'text-muted-foreground hover:bg-white/5'}`}
+        >
+          Register
+        </button>
+        <button 
+          onClick={() => { setIsLogin(true); setError(''); }}
+          className={`flex-1 py-4 text-center transition-colors ${isLogin ? 'bg-primary/20 text-primary border-b-2 border-primary font-bold' : 'text-muted-foreground hover:bg-white/5'}`}
+        >
+          Login
+        </button>
+      </div>
+
       <CardHeader>
         <CardTitle className="text-2xl font-bold flex items-center gap-2">
           {isLogin ? 'Access System' : 'Join the Faction'}
@@ -133,16 +150,6 @@ export function PreRegistrationForm() {
               {error}
             </div>
           )}
-
-          <div className="text-center pt-2">
-            <button 
-              type="button" 
-              onClick={() => { setIsLogin(!isLogin); setError(''); }} 
-              className="text-xs text-primary/80 hover:text-primary font-mono uppercase tracking-widest underline decoration-primary/50 underline-offset-4 transition-colors"
-            >
-              {isLogin ? "Need an account? Register" : "Already have an account? Login"}
-            </button>
-          </div>
         </CardContent>
         <CardFooter className="pt-2">
           <Button 

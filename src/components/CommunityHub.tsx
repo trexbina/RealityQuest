@@ -5,15 +5,20 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MessageSquare, Clock, User, PlusCircle, Loader2, Trash2, Edit } from 'lucide-react';
+import { MessageSquare, PlusCircle, Loader2, Trash2, Edit, ChevronUp, ChevronDown, Paperclip, Check, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertBanner } from '@/components/thegridcn/alert-banner';
 import { DataCard } from '@/components/thegridcn/data-card';
 
+// Ensure this matches Prisma schema
 type Thread = {
   id: string;
   title: string;
   content: string;
+  mediaData?: string | null;
+  mediaType?: string | null;
+  upvotedByIds: string[];
+  downvotedByIds: string[];
   authorId: string;
   authorName: string;
   createdAt: string;
@@ -25,26 +30,20 @@ export function CommunityHub() {
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [fileLimitWarning, setFileLimitWarning] = useState(false);
   
-  const [formData, setFormData] = useState({ title: '', content: '' });
+  // Editor State
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState({ title: '', content: '' });
+
+  const [formData, setFormData] = useState({ title: '', content: '', mediaData: '', mediaType: '' });
 
   const fetchThreads = async () => {
     try {
       const res = await fetch('/api/threads');
-      const contentType = res.headers.get('content-type');
-      
-      if (!res.ok) {
-        const text = await res.text();
-        console.error(`Status ${res.status}: ${text.substring(0, 100)}...`);
-        return;
-      }
-
-      if (contentType && contentType.includes('application/json')) {
+      if (res.ok) {
         const data = await res.json();
         setThreads(data);
-      } else {
-        const text = await res.text();
-        console.error('Expected JSON but received:', text.substring(0, 100));
       }
     } catch (error) {
       console.error('Failed to fetch threads', error);
@@ -70,6 +69,35 @@ export function CommunityHub() {
     fetchThreads();
   }, []);
 
+  // --- Handlers ---
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 20 * 1024 * 1024) { // 20 MB client limit
+      alert('File exceeds 20MB client limit.');
+      e.target.value = '';
+      return;
+    }
+    
+    // Show Vercel warning limit just once if a file is over 4.5MB
+    if (file.size > 4.5 * 1024 * 1024 && !fileLimitWarning) {
+      alert('WARNING: Files over 4.5MB may be blocked by Vercel serverless request limits if deployed online. Local dev will work normally.');
+      setFileLimitWarning(true);
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string; 
+      setFormData(prev => ({ 
+        ...prev, 
+        mediaData: result, 
+        mediaType: file.type 
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return alert('Must be logged in!');
@@ -81,26 +109,17 @@ export function CommunityHub() {
         body: JSON.stringify(formData),
       });
 
-      const contentType = res.headers.get('content-type');
-      
       if (!res.ok) {
-        let errorMessage = 'Failed to post thread';
-        if (contentType && contentType.includes('application/json')) {
-          const data = await res.json();
-          errorMessage = data.error || errorMessage;
-        } else {
-          errorMessage = `Server Error: Received HTML instead of JSON.`;
-        }
-        throw new Error(errorMessage);
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error || `Request rejected (likely payload too large for server config)`);
       }
 
-      if (res.ok) {
-        setFormData({ title: '', content: '' });
-        setIsCreating(false);
-        fetchThreads(); // Refresh the list
-      }
-    } catch (error) {
+      setFormData({ title: '', content: '', mediaData: '', mediaType: '' });
+      setIsCreating(false);
+      fetchThreads(); 
+    } catch (error: any) {
       console.error(error);
+      alert(error.message);
     } finally {
       setSubmitting(false);
     }
@@ -113,10 +132,54 @@ export function CommunityHub() {
       if (res.ok) {
         fetchThreads();
       } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to delete');
+        alert('Failed to delete');
       }
     } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Editing methods
+  const startEdit = (thread: Thread) => {
+    setEditingId(thread.id);
+    setEditFormData({ title: thread.title, content: thread.content });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+  };
+
+  const handleEditSubmit = async (id: string) => {
+    try {
+      const res = await fetch(`/api/threads/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFormData),
+      });
+      if (res.ok) {
+        setEditingId(null);
+        fetchThreads();
+      } else {
+        alert('Failed to update thread');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Voting Methods
+  const handleVote = async (id: string, type: 'UPVOTE' | 'DOWNVOTE') => {
+    if (!currentUser) return alert('Must login to vote.');
+    
+    // Optimistic UI Update (optional, sticking to fetch refresh for accuracy)
+    try {
+      await fetch(`/api/threads/${id}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type })
+      });
+      fetchThreads();
+    } catch(e) {
       console.error(e);
     }
   };
@@ -193,6 +256,19 @@ export function CommunityHub() {
                   placeholder="Share your thoughts..."
                 />
               </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 cursor-pointer w-fit">
+                  <Paperclip className="w-4 h-4" /> Optional Attachment (Max 20MB Local / 4.5MB Vercel)
+                </Label>
+                <Input 
+                  type="file" 
+                  onChange={handleFileChange} 
+                  className="bg-black/40 border-border/50 text-white font-mono max-w-md file:bg-primary file:text-black file:font-semibold file:uppercase tracking-widest file:border-0 hover:file:bg-primary/90"
+                />
+                {formData.mediaData && (
+                  <div className="text-xs text-primary font-mono mt-1">Attachment queued securely.</div>
+                )}
+              </div>
               <Button type="submit" disabled={submitting} className="btn-glow bg-primary text-black font-bold uppercase tracking-widest text-xs">
                 {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Post Thread
@@ -215,38 +291,109 @@ export function CommunityHub() {
         </Card>
       ) : (
         <div className="grid gap-6">
-          {threads.map((thread) => (
-            <DataCard
-              key={thread.id}
-              title={thread.title}
-              subtitle="PUBLIC COMMS"
-              fields={[
-                { label: "AUTHOR", value: thread.authorName, highlight: true },
-                { label: "TIME", value: formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true }) },
-              ]}
-              className="group hover:border-primary/80 transition-colors"
-            >
-              <div className="px-4 pb-4">
-                <div className="p-3 bg-black/30 border border-border/30 rounded font-mono text-sm text-gray-300 leading-relaxed mb-3">
-                  {thread.content}
-                </div>
-                
-                {currentUser && (currentUser.id === thread.authorId || currentUser.role === 'ADMIN') && (
-                  <div className="flex justify-end gap-2 border-t border-border/20 pt-3 mt-3">
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="text-[10px] text-destructive hover:text-destructive hover:bg-destructive/10 uppercase tracking-widest h-7" 
-                      onClick={() => handleDelete(thread.id)}
+          {threads.map((thread) => {
+            const isEditing = editingId === thread.id;
+
+            return (
+              <DataCard
+                key={thread.id}
+                title={isEditing ? 'EDITING OVRRIDE' : thread.title}
+                subtitle="PUBLIC COMMS"
+                fields={[
+                  { label: "AUTHOR", value: thread.authorName, highlight: true },
+                  { label: "TIME", value: formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true }) },
+                ]}
+                className="group hover:border-primary/80 transition-colors relative"
+              >
+                {/* Admin/Owner Top Right Edit/Delete actions nested inside header visual area */}
+                {currentUser && (currentUser.id === thread.authorId || currentUser.role === 'ADMIN') && !isEditing && (
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <button 
+                      onClick={() => startEdit(thread)}
+                      className="text-muted-foreground hover:text-primary transition-colors p-1"
+                      title="Edit Missive"
                     >
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      Delete
-                    </Button>
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(thread.id)}
+                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                      title="Delete Missive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
-              </div>
-            </DataCard>
-          ))}
+
+                <div className="px-4 pb-4">
+                  {isEditing ? (
+                    <div className="bg-black/40 border border-primary/50 rounded p-4 space-y-4">
+                       <Input 
+                        value={editFormData.title} 
+                        onChange={e => setEditFormData({ ...editFormData, title: e.target.value })} 
+                        className="bg-black/60 font-mono text-white"
+                        placeholder="Thread Title"
+                      />
+                      <textarea 
+                        value={editFormData.content}
+                        onChange={e => setEditFormData({ ...editFormData, content: e.target.value })}
+                        className="w-full min-h-[100px] mb-2 bg-black/60 font-mono text-white p-3 border border-border/50 focus-visible:ring-1 focus-visible:ring-primary/50 rounded text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleEditSubmit(thread.id)} className="bg-primary text-black hover:bg-primary/90 text-xs tracking-widest uppercase">
+                          <Check className="w-3 h-3 mr-1" /> Save
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={cancelEdit} className="text-xs tracking-widest uppercase">
+                          <X className="w-3 h-3 mr-1" /> Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-3 bg-black/30 border border-border/30 rounded font-mono text-sm text-gray-300 leading-relaxed mb-3 whitespace-pre-wrap">
+                        {thread.content}
+                      </div>
+
+                      {/* Display Attachment if Exists */}
+                      {thread.mediaData && thread.mediaType && (
+                        <div className="mb-4">
+                          {thread.mediaType.startsWith('image/') ? (
+                             // eslint-disable-next-line @next/next/no-img-element
+                            <img src={thread.mediaData} alt="Thread attachment" className="max-w-full h-auto max-h-[400px] rounded border border-border/40" />
+                          ) : (
+                            <a href={thread.mediaData} download={`attachment_${thread.id}`} className="inline-flex items-center gap-2 text-primary hover:underline font-mono text-sm p-3 bg-black/40 border border-primary/20 rounded">
+                              <Paperclip className="w-4 h-4" /> Download Attached File
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  
+                  {/* VOTING BAR */}
+                  {!isEditing && (
+                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-border/20">
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={() => handleVote(thread.id, 'UPVOTE')}
+                          className={`flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs font-mono font-bold ${thread.upvotedByIds?.includes(currentUser?.id) ? 'bg-primary/20 text-primary border border-primary/30' : 'text-muted-foreground hover:text-primary hover:bg-white/5 border border-transparent'}`}
+                        >
+                          <ChevronUp className="w-4 h-4" /> {thread.upvotedByIds?.length || 0}
+                        </button>
+                        <button 
+                          onClick={() => handleVote(thread.id, 'DOWNVOTE')}
+                          className={`flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs font-mono font-bold ${thread.downvotedByIds?.includes(currentUser?.id) ? 'bg-destructive/20 text-destructive border border-destructive/30' : 'text-muted-foreground hover:text-destructive hover:bg-white/5 border border-transparent'}`}
+                        >
+                          <ChevronDown className="w-4 h-4" /> {thread.downvotedByIds?.length || 0}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </DataCard>
+            );
+          })}
         </div>
       )}
     </div>

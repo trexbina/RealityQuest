@@ -20,12 +20,17 @@ model User {
 }
 
 model Thread {
-  id         String   @id @default(uuid())
-  title      String
-  content    String
-  authorId   String
-  author     User     @relation(fields: [authorId], references: [id])
-  authorName String   // Cached name for quick access
-  createdAt  DateTime @default(now())
+  id             String   @id @default(uuid())
+  title          String
+  content        String
+  mediaData      String?  @db.Text
+  mediaType      String?
+  upvotedByIds   String[] @default([])
+  downvotedByIds String[] @default([])
+  authorId       String
+  author         User     @relation(fields: [authorId], references: [id])
+  authorName     String   // Cached name for quick access
+  createdAt      DateTime @default(now())
 }
+
 

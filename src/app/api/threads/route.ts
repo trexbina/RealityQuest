@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized. You must be logged in to create a thread.' }, { status: 401 });
     }
 
-    const { title, content } = await req.json();
+    const { title, content, mediaData, mediaType } = await req.json();
 
     if (!title || !content) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -40,6 +40,8 @@ export async function POST(req: Request) {
       data: {
         title,
         content,
+        mediaData,
+        mediaType,
         authorId: session.user.id,
         authorName: session.user.username,
       },

@@ -27,7 +27,15 @@ export default function Home() {
               <a href="#register" className="hover:text-primary transition-colors">Waitlist</a>
               <a href="#tavern" className="hover:text-primary transition-colors">Tavern</a>
             </nav>
-            <ThemeSwitcher />
+            <div className="flex items-center gap-4 border-l border-border/50 pl-6">
+              <ThemeSwitcher />
+              <a 
+                href="#register" 
+                className="font-mono text-[10px] uppercase tracking-widest text-primary border border-primary/50 hover:bg-primary/10 px-3 py-1.5 rounded transition-colors"
+              >
+                Login / Join
+              </a>
+            </div>
           </div>
         </div>
       </header>
