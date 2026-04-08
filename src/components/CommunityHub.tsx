@@ -350,20 +350,20 @@ export function CommunityHub() {
                 ]}
                 action={
                   currentUser && (currentUser.id === thread.authorId || currentUser.role === 'ADMIN') ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <button 
                         onClick={() => startEdit(thread)}
-                        className="text-muted-foreground hover:text-primary transition-colors p-1"
+                        className="text-muted-foreground hover:text-primary transition-colors p-1.5"
                         title="Edit Missive"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="w-5 h-5" />
                       </button>
                       <button 
                         onClick={() => handleDelete(thread.id)}
-                        className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                        className="text-muted-foreground hover:text-destructive transition-colors p-1.5"
                         title="Delete Missive"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
                   ) : undefined
@@ -371,7 +371,7 @@ export function CommunityHub() {
                 className="group hover:border-primary/80 transition-colors"
               >
                 <div className="px-4 pb-4">
-                  <div className="p-3 bg-black/30 border border-border/30 rounded font-mono text-sm text-gray-300 leading-relaxed mb-3 whitespace-pre-wrap">
+                  <div className="font-mono text-base text-gray-300 leading-relaxed mb-3 whitespace-pre-wrap">
                     {displayContent}
                     {shouldTruncate && (
                       <button 
