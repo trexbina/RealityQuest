@@ -35,6 +35,7 @@ export function CommunityHub() {
   // Editor State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState({ title: '', content: '' });
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const [formData, setFormData] = useState({ title: '', content: '', mediaData: '', mediaType: '' });
 
@@ -293,18 +294,62 @@ export function CommunityHub() {
         <div className="grid gap-6">
           {threads.map((thread) => {
             const isEditing = editingId === thread.id;
+            const isExpanded = expandedIds.has(thread.id);
+            const TRUNCATE_LENGTH = 200;
+            const shouldTruncate = thread.content.length > TRUNCATE_LENGTH;
+            const displayContent = shouldTruncate && !isExpanded 
+              ? thread.content.slice(0, TRUNCATE_LENGTH) + '...' 
+              : thread.content;
+
+            if (isEditing) {
+              return (
+                <Card key={thread.id} className="border-primary/40 bg-black/50 backdrop-blur-sm glow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Editing Missive</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Title</Label>
+                        <Input 
+                          value={editFormData.title} 
+                          onChange={e => setEditFormData({ ...editFormData, title: e.target.value })} 
+                          className="bg-black/40 border-border/50 text-white font-mono max-w-md"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Message content</Label>
+                        <textarea 
+                          value={editFormData.content}
+                          onChange={e => setEditFormData({ ...editFormData, content: e.target.value })}
+                          className="w-full min-h-[120px] rounded-md border border-border/50 bg-black/40 px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/50 text-white font-mono"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button onClick={() => handleEditSubmit(thread.id)} className="btn-glow bg-primary text-black font-bold uppercase tracking-widest text-xs">
+                          <Check className="w-4 h-4 mr-2" /> Save Changes
+                        </Button>
+                        <Button variant="outline" onClick={cancelEdit} className="uppercase tracking-widest text-xs text-white border-white/20 hover:bg-white/10">
+                          <X className="w-4 h-4 mr-2" /> Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }
 
             return (
               <DataCard
                 key={thread.id}
-                title={isEditing ? 'EDITING OVERRIDE' : thread.title}
+                title={thread.title}
                 subtitle="PUBLIC COMMS"
                 fields={[
                   { label: "AUTHOR", value: thread.authorName, highlight: true },
                   { label: "TIME", value: formatDistanceToNow(new Date(thread.createdAt), { addSuffix: true }) },
                 ]}
                 action={
-                  currentUser && (currentUser.id === thread.authorId || currentUser.role === 'ADMIN') && !isEditing ? (
+                  currentUser && (currentUser.id === thread.authorId || currentUser.role === 'ADMIN') ? (
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={() => startEdit(thread)}
@@ -326,69 +371,54 @@ export function CommunityHub() {
                 className="group hover:border-primary/80 transition-colors"
               >
                 <div className="px-4 pb-4">
-                  {isEditing ? (
-                    <div className="bg-black/40 border border-primary/50 rounded p-4 space-y-4">
-                       <Input 
-                        value={editFormData.title} 
-                        onChange={e => setEditFormData({ ...editFormData, title: e.target.value })} 
-                        className="bg-black/60 font-mono text-white"
-                        placeholder="Thread Title"
-                      />
-                      <textarea 
-                        value={editFormData.content}
-                        onChange={e => setEditFormData({ ...editFormData, content: e.target.value })}
-                        className="w-full min-h-[100px] mb-2 bg-black/60 font-mono text-white p-3 border border-border/50 focus-visible:ring-1 focus-visible:ring-primary/50 rounded text-sm"
-                      />
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleEditSubmit(thread.id)} className="bg-primary text-black hover:bg-primary/90 text-xs tracking-widest uppercase">
-                          <Check className="w-3 h-3 mr-1" /> Save
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={cancelEdit} className="text-xs tracking-widest uppercase">
-                          <X className="w-3 h-3 mr-1" /> Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="p-3 bg-black/30 border border-border/30 rounded font-mono text-sm text-gray-300 leading-relaxed mb-3 whitespace-pre-wrap">
-                        {thread.content}
-                      </div>
+                  <div className="p-3 bg-black/30 border border-border/30 rounded font-mono text-sm text-gray-300 leading-relaxed mb-3 whitespace-pre-wrap">
+                    {displayContent}
+                    {shouldTruncate && (
+                      <button 
+                        onClick={() => {
+                          const next = new Set(expandedIds);
+                          if (next.has(thread.id)) next.delete(thread.id);
+                          else next.add(thread.id);
+                          setExpandedIds(next);
+                        }}
+                        className="text-primary hover:underline ml-2 text-[10px] uppercase tracking-widest inline-flex items-center gap-1"
+                      >
+                        {isExpanded ? <><ChevronUp className="w-3 h-3"/> Show Less</> : <><ChevronDown className="w-3 h-3"/> Show All</>}
+                      </button>
+                    )}
+                  </div>
 
-                      {/* Display Attachment if Exists */}
-                      {thread.mediaData && thread.mediaType && (
-                        <div className="mb-4">
-                          {thread.mediaType.startsWith('image/') ? (
-                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={thread.mediaData} alt="Thread attachment" className="max-w-full h-auto max-h-[400px] rounded border border-border/40" />
-                          ) : (
-                            <a href={thread.mediaData} download={`attachment_${thread.id}`} className="inline-flex items-center gap-2 text-primary hover:underline font-mono text-sm p-3 bg-black/40 border border-primary/20 rounded">
-                              <Paperclip className="w-4 h-4" /> Download Attached File
-                            </a>
-                          )}
-                        </div>
+                  {/* Display Attachment if Exists */}
+                  {thread.mediaData && thread.mediaType && (
+                    <div className="mb-4">
+                      {thread.mediaType.startsWith('image/') ? (
+                         // eslint-disable-next-line @next/next/no-img-element
+                        <img src={thread.mediaData} alt="Thread attachment" className="max-w-full h-auto max-h-[400px] rounded border border-border/40" />
+                      ) : (
+                        <a href={thread.mediaData} download={`attachment_${thread.id}`} className="inline-flex items-center gap-2 text-primary hover:underline font-mono text-sm p-3 bg-black/40 border border-primary/20 rounded">
+                          <Paperclip className="w-4 h-4" /> Download Attached File
+                        </a>
                       )}
-                    </>
+                    </div>
                   )}
                   
                   {/* VOTING BAR */}
-                  {!isEditing && (
-                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-border/20">
-                      <div className="flex items-center gap-1">
-                        <button 
-                          onClick={() => handleVote(thread.id, 'UPVOTE')}
-                          className={`flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs font-mono font-bold ${thread.upvotedByIds?.includes(currentUser?.id) ? 'bg-primary/20 text-primary border border-primary/30' : 'text-muted-foreground hover:text-primary hover:bg-white/5 border border-transparent'}`}
-                        >
-                          <ChevronUp className="w-4 h-4" /> {thread.upvotedByIds?.length || 0}
-                        </button>
-                        <button 
-                          onClick={() => handleVote(thread.id, 'DOWNVOTE')}
-                          className={`flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs font-mono font-bold ${thread.downvotedByIds?.includes(currentUser?.id) ? 'bg-destructive/20 text-destructive border border-destructive/30' : 'text-muted-foreground hover:text-destructive hover:bg-white/5 border border-transparent'}`}
-                        >
-                          <ChevronDown className="w-4 h-4" /> {thread.downvotedByIds?.length || 0}
-                        </button>
-                      </div>
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-border/20">
+                    <div className="flex items-center gap-1">
+                      <button 
+                        onClick={() => handleVote(thread.id, 'UPVOTE')}
+                        className={`flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs font-mono font-bold ${thread.upvotedByIds?.includes(currentUser?.id) ? 'bg-primary/20 text-primary border border-primary/30' : 'text-muted-foreground hover:text-primary hover:bg-white/5 border border-transparent'}`}
+                      >
+                        <ChevronUp className="w-4 h-4" /> {thread.upvotedByIds?.length || 0}
+                      </button>
+                      <button 
+                        onClick={() => handleVote(thread.id, 'DOWNVOTE')}
+                        className={`flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs font-mono font-bold ${thread.downvotedByIds?.includes(currentUser?.id) ? 'bg-destructive/20 text-destructive border border-destructive/30' : 'text-muted-foreground hover:text-destructive hover:bg-white/5 border border-transparent'}`}
+                      >
+                        <ChevronDown className="w-4 h-4" /> {thread.downvotedByIds?.length || 0}
+                      </button>
                     </div>
-                  )}
+                  </div>
 
                 </div>
               </DataCard>
