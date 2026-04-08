@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CRTEffect } from '@/components/thegridcn/crt-effect';
 import { DataCard } from '@/components/thegridcn/data-card';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
+import { NavAuthButton } from '@/components/NavAuthButton';
 import { getSession } from '@/lib/auth';
 
 export default async function Home() {
@@ -32,12 +33,7 @@ export default async function Home() {
             </nav>
             <div className="flex items-center gap-4 border-l border-border/50 pl-6">
               <ThemeSwitcher />
-              <a 
-                href="#register" 
-                className="font-mono text-[10px] uppercase tracking-widest text-primary border border-primary/50 hover:bg-primary/10 px-3 py-1.5 rounded transition-colors"
-              >
-                Login / Join
-              </a>
+              <NavAuthButton />
             </div>
           </div>
         </div>
