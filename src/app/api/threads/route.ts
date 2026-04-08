@@ -11,7 +11,10 @@ export async function GET() {
       },
       include: {
         author: {
-          select: { username: true } // In case we need it
+          select: { username: true }
+        },
+        _count: {
+          select: { comments: true }
         }
       }
     });

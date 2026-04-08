@@ -5,12 +5,20 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MessageSquare, PlusCircle, Loader2, Trash2, Edit, ChevronUp, ChevronDown, Paperclip, Check, X } from 'lucide-react';
+import { MessageSquare, PlusCircle, Loader2, Trash2, Edit, ChevronUp, ChevronDown, Paperclip, Check, X, Send } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertBanner } from '@/components/thegridcn/alert-banner';
 import { DataCard } from '@/components/thegridcn/data-card';
 
-// Ensure this matches Prisma schema
+type Comment = {
+  id: string;
+  content: string;
+  threadId: string;
+  authorId: string;
+  authorName: string;
+  createdAt: string;
+};
+
 type Thread = {
   id: string;
   title: string;
@@ -22,6 +30,7 @@ type Thread = {
   authorId: string;
   authorName: string;
   createdAt: string;
+  _count?: { comments: number };
 };
 
 export function CommunityHub() {
@@ -36,6 +45,12 @@ export function CommunityHub() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState({ title: '', content: '' });
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  // Comments State
+  const [openCommentsId, setOpenCommentsId] = useState<string | null>(null);
+  const [comments, setComments] = useState<Record<string, Comment[]>>({});
+  const [commentText, setCommentText] = useState('');
+  const [commentLoading, setCommentLoading] = useState(false);
 
   const [formData, setFormData] = useState({ title: '', content: '', mediaData: '', mediaType: '' });
 
@@ -182,6 +197,49 @@ export function CommunityHub() {
       fetchThreads();
     } catch(e) {
       console.error(e);
+    }
+  };
+
+  // Comments
+  const toggleComments = async (threadId: string) => {
+    if (openCommentsId === threadId) {
+      setOpenCommentsId(null);
+      return;
+    }
+    setOpenCommentsId(threadId);
+    await fetchComments(threadId);
+  };
+
+  const fetchComments = async (threadId: string) => {
+    try {
+      const res = await fetch(`/api/threads/${threadId}/comments`);
+      if (res.ok) {
+        const data = await res.json();
+        setComments(prev => ({ ...prev, [threadId]: data }));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleCommentSubmit = async (threadId: string) => {
+    if (!commentText.trim() || !currentUser) return;
+    setCommentLoading(true);
+    try {
+      const res = await fetch(`/api/threads/${threadId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: commentText }),
+      });
+      if (res.ok) {
+        setCommentText('');
+        await fetchComments(threadId);
+        fetchThreads(); // refresh comment count
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setCommentLoading(false);
     }
   };
 
@@ -402,7 +460,7 @@ export function CommunityHub() {
                     </div>
                   )}
                   
-                  {/* VOTING BAR */}
+                  {/* VOTING & COMMENTS BAR */}
                   <div className="flex justify-between items-center mt-3 pt-3 border-t border-border/20">
                     <div className="flex items-center gap-1">
                       <button 
@@ -418,7 +476,60 @@ export function CommunityHub() {
                         <ChevronDown className="w-4 h-4" /> {thread.downvotedByIds?.length || 0}
                       </button>
                     </div>
+                    <button 
+                      onClick={() => toggleComments(thread.id)}
+                      className={`flex items-center gap-1 px-2 py-1 rounded transition-colors text-xs font-mono font-bold ${openCommentsId === thread.id ? 'bg-primary/20 text-primary border border-primary/30' : 'text-muted-foreground hover:text-primary hover:bg-white/5 border border-transparent'}`}
+                    >
+                      <MessageSquare className="w-4 h-4" /> {thread._count?.comments || 0}
+                    </button>
                   </div>
+
+                  {/* COMMENTS SECTION */}
+                  {openCommentsId === thread.id && (
+                    <div className="mt-4 pt-4 border-t border-border/20 space-y-3">
+                      {(comments[thread.id] || []).length === 0 ? (
+                        <p className="text-xs text-muted-foreground font-mono text-center py-2">No comments yet. Be the first!</p>
+                      ) : (
+                        (comments[thread.id] || []).map(comment => (
+                          <div key={comment.id} className="flex gap-3 items-start">
+                            <div className="w-7 h-7 rounded bg-primary/20 flex items-center justify-center text-primary text-[10px] font-bold uppercase shrink-0">
+                              {comment.authorName.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-xs font-mono font-bold text-primary uppercase">{comment.authorName}</span>
+                                <span className="text-[10px] text-muted-foreground font-mono">{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
+                              </div>
+                              <p className="text-sm text-gray-300 font-mono leading-relaxed">{comment.content}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+
+                      {/* Comment Input */}
+                      {currentUser ? (
+                        <div className="flex gap-2 pt-2">
+                          <input
+                            value={commentText}
+                            onChange={e => setCommentText(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleCommentSubmit(thread.id); }}
+                            placeholder="Write a comment..."
+                            className="flex-1 bg-black/40 border border-border/50 rounded px-3 py-2 text-sm font-mono text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+                          />
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleCommentSubmit(thread.id)} 
+                            disabled={commentLoading || !commentText.trim()}
+                            className="bg-primary text-black hover:bg-primary/90 px-3"
+                          >
+                            {commentLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest text-center py-1">Login to comment</p>
+                      )}
+                    </div>
+                  )}
 
                 </div>
               </DataCard>

@@ -9,28 +9,39 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  username     String   @unique
+  id           String    @id @default(uuid())
+  email        String    @unique
+  username     String    @unique
   passwordHash String
-  role         String   @default("USER") // USER or ADMIN
-  createdAt    DateTime @default(now())
+  role         String    @default("USER") // USER or ADMIN
+  createdAt    DateTime  @default(now())
   
   threads      Thread[]
+  comments     Comment[]
 }
 
 model Thread {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   title          String
   content        String
-  mediaData      String?  @db.Text
+  mediaData      String?   @db.Text
   mediaType      String?
-  upvotedByIds   String[] @default([])
-  downvotedByIds String[] @default([])
+  upvotedByIds   String[]  @default([])
+  downvotedByIds String[]  @default([])
   authorId       String
-  author         User     @relation(fields: [authorId], references: [id])
-  authorName     String   // Cached name for quick access
-  createdAt      DateTime @default(now())
+  author         User      @relation(fields: [authorId], references: [id])
+  authorName     String    // Cached name for quick access
+  createdAt      DateTime  @default(now())
+  comments       Comment[]
 }
 
-
+model Comment {
+  id         String   @id @default(uuid())
+  content    String
+  threadId   String
+  thread     Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  authorName String
+  createdAt  DateTime @default(now())
+}
